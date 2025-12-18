@@ -1,17 +1,14 @@
-/**
- * Atmosphere - Logique Client-Side (JS)
- * Initialisation de la carte Leaflet et de Chart.js
- */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Initialisation de la Carte Leaflet
+    // 1. Initialisation de la Carte Leaflet centrée sur la position de l'utilisateur
     const map = L.map('map').setView(userPos, 13);
 
+    // Chargement des tuiles OpenStreetMap
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Marqueur pour la position de l'utilisateur
+    // Marqueur pour la position détectée du client (via l'IP)
     L.marker(userPos).addTo(map)
         .bindPopup('<b>Votre position (IP)</b>')
         .openPopup();

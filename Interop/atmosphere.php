@@ -4,17 +4,29 @@
  * 
  */
 
-// Configuration du proxy pour webetu
+// Configuration du proxy pour webetu (www-cache:3128)
+// On teste si le proxy est nécessaire (pour le local)
+$proxy = 'tcp://127.0.0.1:8080'; // Valeur par défaut IUT (ou www-cache:3128)
+// Si on est en local sans proxy, on peut désactiver ou changer
 $opts = array(
     'http' => array(
-        'proxy' => 'tcp://127.0.0.1:8080',
-        'request_fulluri' => true
+        'proxy' => $proxy,
+        'request_fulluri' => true,
+        'timeout' => 5
     ),
     'ssl' => array(
         'verify_peer' => false,
         'verify_peer_name' => false
     )
 );
+
+// On tente une petite requête pour voir si le proxy répond, sinon on désactive
+$test_context = @stream_context_create($opts);
+if (@file_get_contents("http://google.com", false, $test_context, 0, 1) === false) {
+    // Si échec, on tente sans proxy
+    $opts['http']['proxy'] = null;
+}
+
 $context = stream_context_create($opts);
 libxml_set_streams_context($context); // Pour simplexml_load_file et XSLT
 
@@ -102,7 +114,8 @@ $proc->importStyleSheet($xsl);
 $meteo_html = $proc->transformToXML($xml);
 
 // 1. Récupération du trafic (Grand Nancy)
-$traffic_url = "https://carto.g-ny.org/data/cifs/cifs_waze_v2.json";
+// On utilise l'URL officielle du Grand Nancy (.eu au lieu de .org pour éviter les redirections)
+$traffic_url = "https://carto.g-ny.eu/data/cifs/cifs_waze_v2.json";
 $traffic_json = file_get_contents($traffic_url, false, $context);
 $traffic_data = json_decode($traffic_json, true);
 
@@ -113,36 +126,49 @@ $covid_info = json_decode($covid_json, true);
 $covid_resource_url = "";
 if (isset($covid_info['resources'])) {
     foreach ($covid_info['resources'] as $res) {
-        if (strpos($res['title'], 'hebdomadaire') !== false) {
+        if (stripos($res['title'], 'indicateurs') !== false && $res['format'] == 'csv') {
             $covid_resource_url = $res['latest'];
             break;
         }
     }
 }
 
-// Parsing du CSV Covid (si l'URL est trouvée)
+// Parsing du CSV Covid (Format LARGE : semaine;Station1;Station2;...)
 $covid_data_points = [];
 if ($covid_resource_url) {
     $csv_content = file_get_contents($covid_resource_url, false, $context);
     $rows = explode("\n", $csv_content);
-    $header = str_getcsv(array_shift($rows), ";");
+    $header_line = array_shift($rows);
+    $header = str_getcsv($header_line, ";");
 
-    // On cherche les colonnes : 'nom_station', 'date_prelevement', 'indicateur'
-    $col_station = array_search('nom_station', $header);
-    $col_date = array_search('date_prelevement', $header);
-    $col_ind = array_search('indicateur', $header);
-
-    foreach ($rows as $row) {
-        $data = str_getcsv($row, ";");
-        if (count($data) > $col_station && strpos($data[$col_station], 'Maxeville') !== false) {
-            $covid_data_points[] = [
-                'date' => $data[$col_date],
-                'value' => (float) str_replace(',', '.', $data[$col_ind])
-            ];
+    // On cherche l'index de la colonne correspondant à Maxéville ou Nancy
+    $col_index = -1;
+    foreach ($header as $idx => $col_name) {
+        $clean_col = trim($col_name, '" ');
+        if (stripos($clean_col, 'MAXEVILLE') !== false || stripos($clean_col, 'NANCY') !== false) {
+            $col_index = $idx;
+            break;
         }
     }
-    // On garde les 10 derniers points
-    $covid_data_points = array_slice($covid_data_points, -10);
+
+    if ($col_index !== -1) {
+        foreach ($rows as $row) {
+            if (empty(trim($row)))
+                continue;
+            $data = str_getcsv($row, ";");
+            if (count($data) > $col_index) {
+                $raw_val = trim($data[$col_index], '" ');
+                if ($raw_val !== "NA" && $raw_val !== "") {
+                    $covid_data_points[] = [
+                        'date' => trim($data[0], '" '),
+                        'value' => (float) str_replace(',', '.', $raw_val)
+                    ];
+                }
+            }
+        }
+    }
+    // On garde les 8 derniers points pour une meilleure lisibilité
+    $covid_data_points = array_slice($covid_data_points, -8);
 }
 // 3. Récupération de la qualité de l'air (Atmo Grand Est)
 // Nancy code INSEE: 54395. On utilise une URL simplifiée si possible ou un mock réaliste.
@@ -173,7 +199,39 @@ if (!empty($address_data)) {
     $fixed_lon = $address_data[0]['lon'];
 }
 
-// 5. Liens API pour affichage
+// 5. Logique de décision (Prendre la voiture ou non ?)
+$reasons = [];
+$should_drive = true;
+
+// Condition Météo (basée sur le XML simulé ou réel)
+$xml_obj = simplexml_load_string($meteo_xml_str);
+foreach ($xml_obj->prevision as $prev) {
+    if ((float) $prev->temp < 3)
+        $reasons[] = "Températures très froides prévues.";
+    if ((float) $prev->pluie > 5)
+        $reasons[] = "Pluie forte prévue.";
+    if ((float) $prev->neige > 0)
+        $reasons[] = "Risque de neige.";
+    if ((float) $prev->vitesse_vent > 50)
+        $reasons[] = "Vent violent prévu.";
+}
+
+// Condition Trafic
+$incident_count = isset($traffic_data['incidents']) ? count($traffic_data['incidents']) : 0;
+if ($incident_count > 5) {
+    $reasons[] = "Trafic dense avec $incident_count incidents signalés.";
+}
+
+// Condition Air
+if ($air_quality_index > 4) {
+    $reasons[] = "Qualité de l'air médiocre (Indice $air_quality_index).";
+    $should_drive = false; // On déconseille en cas de pollution pour ne pas aggraver
+}
+
+if (count($reasons) > 2)
+    $should_drive = false;
+
+// 6. Liens API pour affichage
 $api_links = [
     "Géo IP" => $geo_url,
     "Trafic" => $traffic_url,
@@ -195,10 +253,27 @@ $api_links = [
 <body>
     <header>
         <h1>Atmosphere</h1>
-        <p>Vos conditions de circulation à <strong><?php echo htmlspecialchars($city); ?></strong></p>
+        <p>Conditions en temps réel à <strong><?php echo htmlspecialchars($city); ?></strong></p>
+        <p class="date-header">Mis à jour le <?php echo date('d/m/Y à H:i'); ?></p>
     </header>
 
     <main>
+        <section id="verdict" class="<?php echo $should_drive ? 'drive-yes' : 'drive-no'; ?>">
+            <h2>Faut-il utiliser sa voiture ?</h2>
+            <div class="decision-box">
+                <p class="main-decision">
+                    <?php echo $should_drive ? "OUI, les conditions sont favorables." : "NON, privilégiez les transports en commun."; ?>
+                </p>
+                <?php if (!empty($reasons)): ?>
+                    <ul class="reasons-list">
+                        <?php foreach (array_unique($reasons) as $reason): ?>
+                            <li><?php echo htmlspecialchars($reason); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+            </div>
+        </section>
+
         <section id="meteo">
             <?php echo $meteo_html; ?>
         </section>
@@ -219,12 +294,14 @@ $api_links = [
 
         <section id="map-container">
             <h2>Difficultés de circulation</h2>
-            <div id="map" style="height: 400px; border-radius: 12px;"></div>
+            <div id="map" style="height: 300px; border-radius: 12px;"></div>
         </section>
 
         <section id="covid-chart">
             <h2>Évolution Covid (Sras dans les égouts)</h2>
-            <canvas id="covidChart"></canvas>
+            <div class="chart-wrapper">
+                <canvas id="covidChart"></canvas>
+            </div>
         </section>
 
         <section id="sources">

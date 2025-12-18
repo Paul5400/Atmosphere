@@ -1,8 +1,4 @@
-/*
- * Atmosphere - Style CSS
- * Design moderne, premium et responsive
- */
-
+/* Configuration des variables de design (couleurs, effets) */
 :root {
     --primary: #2563eb;
     --secondary: #64748b;
@@ -14,6 +10,7 @@
     --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
+/* Style général du corps de la page */
 body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     background: linear-gradient(135deg, #e0f2fe 0%, #f1f5f9 100%);
@@ -55,6 +52,40 @@ section {
     border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
+/* Verdict Section */
+#verdict {
+    text-align: center;
+    border-left: 8px solid;
+}
+
+#verdict.drive-yes {
+    border-color: #22c55e;
+    background: #f0fdf4;
+}
+
+#verdict.drive-no {
+    border-color: #ef4444;
+    background: #fef2f2;
+}
+
+.main-decision {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 1rem 0;
+}
+
+.reasons-list {
+    text-align: left;
+    display: inline-block;
+    padding-left: 1.5rem;
+    margin-bottom: 0;
+}
+
+.date-header {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
 h2 {
     margin-top: 0;
     border-bottom: 2px solid var(--primary);
@@ -92,11 +123,35 @@ h2 {
 }
 
 /* Classes pour les status météo (sans emojis) */
-.weather-icon.vent-fort::after { content: "VENT"; color: var(--accent); font-weight: bold; }
-.weather-icon.pluie::after { content: "PLUIE"; color: var(--primary); font-weight: bold; }
-.weather-icon.neige::after { content: "NEIGE"; color: #38bdf8; font-weight: bold; }
-.weather-icon.froid::after { content: "FROID"; color: #0ea5e9; font-weight: bold; }
-.weather-icon.standard::after { content: "BEAU"; color: var(--accent); font-weight: bold; }
+.weather-icon.vent-fort::after {
+    content: "VENT";
+    color: var(--accent);
+    font-weight: bold;
+}
+
+.weather-icon.pluie::after {
+    content: "PLUIE";
+    color: var(--primary);
+    font-weight: bold;
+}
+
+.weather-icon.neige::after {
+    content: "NEIGE";
+    color: #38bdf8;
+    font-weight: bold;
+}
+
+.weather-icon.froid::after {
+    content: "FROID";
+    color: #0ea5e9;
+    font-weight: bold;
+}
+
+.weather-icon.standard::after {
+    content: "BEAU";
+    color: var(--accent);
+    font-weight: bold;
+}
 
 .alert {
     background: #fee2e2;
@@ -107,16 +162,27 @@ h2 {
     font-size: 0.875rem;
 }
 
-/* Map & Chart */
 #map {
     width: 100%;
     z-index: 1;
 }
 
+/* Conteneur pour limiter la hauteur du graphique */
+.chart-wrapper {
+    position: relative;
+    height: 250px;
+    width: 100%;
+}
+
 /* Media Queries */
 @media (max-width: 768px) {
-    header h1 { font-size: 2rem; }
-    .weather-grid { grid-template-columns: 1fr; }
+    header h1 {
+        font-size: 2rem;
+    }
+
+    .weather-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 footer {
