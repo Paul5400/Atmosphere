@@ -178,7 +178,7 @@ $air_quality_index = 2; // Bon
 $air_quality_label = "Bon";
 
 // 4. Géolocalisation d'une adresse fixe (IUT Charlemagne)
-$address = "13 Rue Michel Ney, 54000 Nancy";
+$address = "2 ter Boulevard Charlemagne, 54000 Nancy";
 $address_url = "https://nominatim.openstreetmap.org/search?q=" . urlencode($address) . "&format=json&limit=1";
 $address_opts = [
     "http" => [
