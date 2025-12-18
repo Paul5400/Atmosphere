@@ -107,11 +107,9 @@ $traffic_json = file_get_contents($traffic_url, false, $context);
 $traffic_data = json_decode($traffic_json, true);
 
 // 2. Récupération des données Covid (SARS-CoV-2 dans les égouts - SUM'Eau)
-// On utilise l'ID du dataset identifié : 651a82516edc589b4f6a0354
 $covid_dataset_url = "https://www.data.gouv.fr/api/1/datasets/651a82516edc589b4f6a0354/";
 $covid_json = file_get_contents($covid_dataset_url, false, $context);
 $covid_info = json_decode($covid_json, true);
-// On récupère l'URL de la ressource la plus récente (flux hebdomadaire)
 $covid_resource_url = "";
 if (isset($covid_info['resources'])) {
     foreach ($covid_info['resources'] as $res) {
@@ -120,6 +118,31 @@ if (isset($covid_info['resources'])) {
             break;
         }
     }
+}
+
+// Parsing du CSV Covid (si l'URL est trouvée)
+$covid_data_points = [];
+if ($covid_resource_url) {
+    $csv_content = file_get_contents($covid_resource_url, false, $context);
+    $rows = explode("\n", $csv_content);
+    $header = str_getcsv(array_shift($rows), ";");
+
+    // On cherche les colonnes : 'nom_station', 'date_prelevement', 'indicateur'
+    $col_station = array_search('nom_station', $header);
+    $col_date = array_search('date_prelevement', $header);
+    $col_ind = array_search('indicateur', $header);
+
+    foreach ($rows as $row) {
+        $data = str_getcsv($row, ";");
+        if (count($data) > $col_station && strpos($data[$col_station], 'Maxeville') !== false) {
+            $covid_data_points[] = [
+                'date' => $data[$col_date],
+                'value' => (float) str_replace(',', '.', $data[$col_ind])
+            ];
+        }
+    }
+    // On garde les 10 derniers points
+    $covid_data_points = array_slice($covid_data_points, -10);
 }
 // 3. Récupération de la qualité de l'air (Atmo Grand Est)
 // Nancy code INSEE: 54395. On utilise une URL simplifiée si possible ou un mock réaliste.
@@ -190,7 +213,8 @@ $api_links = [
 
         <section id="air-quality">
             <h2>Qualité de l'air</h2>
-            <p>Indice ATMO à Nancy : <strong><?php echo $air_quality_index; ?> (<?php echo $air_quality_label; ?>)</strong></p>
+            <p>Indice ATMO à Nancy : <strong><?php echo $air_quality_index; ?>
+                    (<?php echo $air_quality_label; ?>)</strong></p>
         </section>
 
         <section id="map-container">
@@ -207,7 +231,8 @@ $api_links = [
             <h2>Sources des données</h2>
             <ul>
                 <?php foreach ($api_links as $name => $url): ?>
-                    <li><?php echo htmlspecialchars($name); ?> : <a href="<?php echo htmlspecialchars($url); ?>"><?php echo htmlspecialchars($url); ?></a></li>
+                    <li><?php echo htmlspecialchars($name); ?> : <a
+                            href="<?php echo htmlspecialchars($url); ?>"><?php echo htmlspecialchars($url); ?></a></li>
                 <?php endforeach; ?>
             </ul>
         </section>
@@ -220,6 +245,7 @@ $api_links = [
     <script>
         // On passe les données PHP au JavaScript
         const trafficData = <?php echo json_encode($traffic_data); ?>;
+        const covidDataPoints = <?php echo json_encode($covid_data_points); ?>;
         const userPos = [<?php echo $lat; ?>, <?php echo $lon; ?>];
         const fixedPos = [<?php echo $fixed_lat; ?>, <?php echo $fixed_lon; ?>];
     </script>
