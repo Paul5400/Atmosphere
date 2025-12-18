@@ -59,6 +59,48 @@ if ($geo_data && $geo_data->status == 'success') {
     }
 }
 
+// Simulation de données Météo XML (en attendant une API réelle conforme au TD)
+$meteo_xml_str = <<<XML
+<?xml version="1.0" encoding="UTF-8"?>
+<meteo>
+    <prevision>
+        <moment>Matin</moment>
+        <temp>2</temp>
+        <pluie>0</pluie>
+        <neige>5</neige>
+        <vitesse_vent>15</vitesse_vent>
+        <description>Neige faible</description>
+    </prevision>
+    <prevision>
+        <moment>Midi</moment>
+        <temp>4</temp>
+        <pluie>10</pluie>
+        <neige>0</neige>
+        <vitesse_vent>20</vitesse_vent>
+        <description>Averses de pluie</description>
+    </prevision>
+    <prevision>
+        <moment>Soir</moment>
+        <temp>1</temp>
+        <pluie>0</pluie>
+        <neige>0</neige>
+        <vitesse_vent>55</vitesse_vent>
+        <description>Ciel degage, vent fort</description>
+    </prevision>
+</meteo>
+XML;
+
+// Transformation XSLT
+$xml = new DOMDocument();
+$xml->loadXML($meteo_xml_str);
+
+$xsl = new DOMDocument();
+$xsl->load('meteo.xsl');
+
+$proc = new XSLTProcessor();
+$proc->importStyleSheet($xsl);
+$meteo_html = $proc->transformToXML($xml);
+
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -77,11 +119,15 @@ if ($geo_data && $geo_data->status == 'success') {
     </header>
 
     <main>
+        <section id="meteo">
+            <?php echo $meteo_html; ?>
+        </section>
+
         <section id="geo-info">
             <h2>Géolocalisation</h2>
             <p>Votre IP : <?php echo htmlspecialchars($client_ip); ?></p>
             <p>Position : <?php echo $lat; ?>, <?php echo $lon; ?> (<?php echo htmlspecialchars($zip); ?>)</p>
-            <p>Source API : <a
+            <p>Source API Géo : <a
                     href="<?php echo htmlspecialchars($geo_url); ?>"><?php echo htmlspecialchars($geo_url); ?></a></p>
         </section>
     </main>
