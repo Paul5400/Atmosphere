@@ -6,11 +6,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }).addTo(map);
 
     L.marker(userPos).addTo(map)
-        .bindPopup('<b>Votre position (IP)</b>')
+        .bindPopup('<b>Position utilisée (IUT Charlemagne)</b>')
         .openPopup();
 
     L.circleMarker(fixedPos, { color: 'red' }).addTo(map)
         .bindPopup('<b>IUT Charlemagne / Destination</b>');
+
+    if (ipPos && ipPos.length === 2) {
+        L.circleMarker(ipPos, { color: 'blue' }).addTo(map)
+            .bindPopup('<b>Localisation IP détectée</b>');
+    }
 
     if (trafficData && trafficData.incidents) {
         trafficData.incidents.forEach(incident => {

@@ -157,26 +157,25 @@ $geo_url = "http://ip-api.com/xml/" . $client_ip;
 $geo_xml_str = safe_get($geo_url, $context);
 $geo_data = $geo_xml_str ? simplexml_load_string($geo_xml_str) : null;
 
+$ip_lat = null;
+$ip_lon = null;
+$ip_city = null;
+$ip_zip = null;
+if ($geo_data && $geo_data->status == 'success') {
+    $ip_lat = (float) $geo_data->lat;
+    $ip_lon = (float) $geo_data->lon;
+    $ip_city = (string) $geo_data->city;
+    $ip_zip = (string) $geo_data->zip;
+}
+
 $lat = 48.6815;
 $lon = 6.1737;
 $city = "Nancy (IUT Charlemagne)";
 $zip = "54000";
-$in_nancy = false;
-if ($geo_data && $geo_data->status == 'success') {
-    $lat = (float) $geo_data->lat;
-    $lon = (float) $geo_data->lon;
-    $city = (string) $geo_data->city;
-    $zip = (string) $geo_data->zip;
-    if (strpos((string) $geo_data->zip, '54') === 0 || (string) $geo_data->city === 'Nancy') {
-        $in_nancy = true;
-    }
-}
-if (!$in_nancy) {
-    $lat = $fixed_lat;
-    $lon = $fixed_lon;
-    $city = "Nancy (IUT Charlemagne)";
-    $zip = "54000";
-}
+$lat = $fixed_lat;
+$lon = $fixed_lon;
+$city = "Nancy (IUT Charlemagne)";
+$zip = "54000";
 
 $meteo_xml_str = build_weather_xml($lat, $lon, $context);
 if (!$meteo_xml_str) {
@@ -385,7 +384,15 @@ $api_links = array(
         <section id="geo-info">
             <h2>Géolocalisation</h2>
             <p>Votre IP : <?php echo htmlspecialchars($client_ip); ?></p>
-            <p>Position : <?php echo $lat; ?>, <?php echo $lon; ?> (<?php echo htmlspecialchars($zip); ?>)</p>
+            <p>Localisation IP détectée :
+                <?php if ($ip_lat !== null && $ip_lon !== null): ?>
+                    <?php echo htmlspecialchars($ip_city ?? 'Inconnue'); ?> (<?php echo htmlspecialchars($ip_zip ?? ''); ?>)
+                    - <?php echo $ip_lat; ?>, <?php echo $ip_lon; ?>
+                <?php else: ?>
+                    Indisponible
+                <?php endif; ?>
+            </p>
+            <p>Coordonnées utilisées (IUT Charlemagne) : <?php echo $lat; ?>, <?php echo $lon; ?> (<?php echo htmlspecialchars($zip); ?>)</p>
             <p>Source API Géo : <a href="<?php echo htmlspecialchars($geo_url); ?>"><?php echo htmlspecialchars($geo_url); ?></a></p>
         </section>
         <section id="air-quality">
@@ -422,6 +429,7 @@ $api_links = array(
         const covidDataPoints = <?php echo json_encode($covid_data_points); ?>;
         const userPos = [<?php echo $lat; ?>, <?php echo $lon; ?>];
         const fixedPos = [<?php echo $fixed_lat; ?>, <?php echo $fixed_lon; ?>];
+        const ipPos = <?php echo ($ip_lat !== null && $ip_lon !== null) ? '[' . $ip_lat . ', ' . $ip_lon . ']' : 'null'; ?>;
     </script>
     <script src="script.js"></script>
     <footer>
