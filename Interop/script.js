@@ -1,28 +1,20 @@
-
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Initialisation de la Carte Leaflet centrée sur la position de l'utilisateur
     const map = L.map('map').setView(userPos, 13);
 
-    // Chargement des tuiles OpenStreetMap
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Marqueur pour la position détectée du client (via l'IP)
     L.marker(userPos).addTo(map)
         .bindPopup('<b>Votre position (IP)</b>')
         .openPopup();
 
-    // Marqueur pour l'adresse fixe (IUT Charlemagne)
     L.circleMarker(fixedPos, { color: 'red' }).addTo(map)
         .bindPopup('<b>IUT Charlemagne / Destination</b>');
 
-    // Ajout des incidents de trafic
     if (trafficData && trafficData.incidents) {
         trafficData.incidents.forEach(incident => {
             if (incident.location) {
-                // Le format CIFS Waze v2 a souvent une structure incidents[].location.polyline
-                // ou simplement des coordonnées directes.
                 let lat, lon;
                 if (incident.location.polyline) {
                     const coords = incident.location.polyline.split(' ');
@@ -44,7 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 2. Initialisation du Graphique Covid (Chart.js)
     if (covidDataPoints && covidDataPoints.length > 0) {
         const labels = covidDataPoints.map(p => p.date);
         const values = covidDataPoints.map(p => p.value);

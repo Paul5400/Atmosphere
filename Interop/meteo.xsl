@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
-    <xsl:output method="html" encoding="UTF-8" indent="yes"/>
-
-    <!-- Transformation du XML météo en fragment HTML -->
+    <xsl:output method="html" encoding="UTF-8" indent="yes" />
     <xsl:template match="/">
         <div class="weather-report">
             <h3>Prévisions Météo</h3>
@@ -11,8 +9,6 @@
             </div>
         </div>
     </xsl:template>
-
-    <!-- Template pour chaque période (matin, midi, soir) -->
     <xsl:template match="prevision">
         <div class="weather-period">
             <span class="moment"><xsl:value-of select="moment"/></span>
@@ -27,14 +23,11 @@
                         <xsl:otherwise>standard</xsl:otherwise>
                     </xsl:choose>
                 </xsl:attribute>
-                <!-- On utilisera du CSS pour afficher des symboles ou icônes via des classes -->
             </div>
             <div class="details">
                 <span class="temp"><xsl:value-of select="temp"/>°C</span>
                 <span class="desc"><xsl:value-of select="description"/></span>
             </div>
-            
-            <!-- Alertes textuelles sans emojis -->
             <xsl:if test="pluie > 0 or neige > 0 or vitesse_vent > 30">
                 <div class="alert">
                     <strong>Attention : </strong>
